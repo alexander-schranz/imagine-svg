@@ -14,7 +14,6 @@ use Imagine\Exception\InvalidArgumentException;
 use Imagine\Exception\OutOfBoundsException;
 use Imagine\Exception\RuntimeException;
 use Imagine\Image\AbstractImage;
-use Imagine\Image\Box;
 use Imagine\Image\BoxInterface;
 use Imagine\Image\Fill\FillInterface;
 use Imagine\Image\ImageInterface;
@@ -98,7 +97,7 @@ class Image extends AbstractImage
         }
 
         if (
-            !($currentSize instanceof RelativeBox)
+            SvgBox::TYPE_ASPECT_RATIO !== $currentSize->getType()
             && 0 === $start->getX()
             && 0 === $start->getY()
             && $size->getWidth() === $currentSize->getWidth()
@@ -147,7 +146,7 @@ class Image extends AbstractImage
         $currentSize = $this->getSize();
 
         if (
-            !($currentSize instanceof RelativeBox)
+            SvgBox::TYPE_ASPECT_RATIO !== $currentSize->getType()
             && $size->getWidth() === $currentSize->getWidth()
             && $size->getHeight() === $currentSize->getHeight()
         ) {
@@ -297,6 +296,8 @@ class Image extends AbstractImage
 
     /**
      * {@inheritdoc}
+     *
+     * @return SvgBox
      */
     public function getSize()
     {
@@ -307,7 +308,7 @@ class Image extends AbstractImage
 
         // Absolute dimensions
         if ($width && $height) {
-            return new Box($width, $height);
+            return SvgBox::createTypeAbsolute($width, $height);
         }
 
         $viewBox = preg_split('/[\s,]+/', $svg->getAttribute('viewBox') ?: '');
@@ -316,17 +317,17 @@ class Image extends AbstractImage
 
         // Missing width/height and viewBox
         if ($viewBoxWidth <= 0 || $viewBoxHeight <= 0) {
-            return new UndefinedBox();
+            return SvgBox::createTypeNone();
         }
 
         // Fixed width and viewBox
         if ($width) {
-            return new Box($width, $width / $viewBoxWidth * $viewBoxHeight);
+            return SvgBox::createTypeAbsolute($width, $width / $viewBoxWidth * $viewBoxHeight);
         }
 
         // Fixed height and viewBox
         if ($height) {
-            return new Box($height / $viewBoxHeight * $viewBoxWidth, $height);
+            return SvgBox::createTypeAbsolute($height / $viewBoxHeight * $viewBoxWidth, $height);
         }
 
         // Normalize floating point values
@@ -339,7 +340,7 @@ class Image extends AbstractImage
         }
 
         // Missing width/height, returning relative dimensions from viewBox
-        return new RelativeBox(round($viewBoxWidth), round($viewBoxHeight));
+        return SvgBox::createTypeAspectRatio(round($viewBoxWidth), round($viewBoxHeight));
     }
 
     /**
